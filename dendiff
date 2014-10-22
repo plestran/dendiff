@@ -139,16 +139,6 @@ sub parse {
   elsif ($inp[0] =~ /-h/) { system('perldoc dendiff'); } 
   else { error(); }    
 
-#	if ($inp[0] =~ /.fchk/){ $fchk = $inp[0]; 
-#    if ($inp[1] =~ /.log/) { $logfile = $inp[1]; } 
-#    else { error(); }
-#    }
-#	elsif ($inp[0] =~ /-h/){ system('perldoc dendiff'); } 
-#	else { error(); }
-
-#  print "fchk = $fchk\n";
-#  print "log  = $logfile\n";
-
 }
 
 sub search_logfile {
