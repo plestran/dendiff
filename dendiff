@@ -17,7 +17,10 @@ differences.
 
 =head1 EXAMPLES
 
-'dendiff file1.fchk file2.log'
+'dendiff -f file1.fchk file2.log' (make all the .fchk files - file2-#.fchk)
+
+'dendiff -f file1.fchk file2.log' (make all the .fchk files - file2-#.fchk)
+
 
 =head1 VERSION
 
@@ -32,6 +35,8 @@ Patrick J Lestrange, E<lt>plestran@uw.eduE<gt>
 our $version = "0.0.1";
 our ($norb,$ntt,$logfile,$fchk,$alpha_e,$beta_e);
 our (%alpha_den,%beta_den,%total_den,@time,$nden);
+our $cube_flag = 0;
+our $fchk_flag = 0;
 
 ##################
 ## Main Program ##
@@ -41,8 +46,9 @@ if ( !$ARGV[0] ){
 	system('perldoc dendiff'); }
 else { 
 	parse(@ARGV); 
-	search_logfile();
-  mk_files();
+	if ($fchk_flag) {
+    search_logfile();
+    mk_files(); }
 	}
 
 #################
@@ -53,7 +59,6 @@ sub error {
 
 		print "Unable to interpret input.\n";
 		print "Try running 'dendiff -h' to see the help screen\n";
-		die; 
 
 }
 
@@ -105,9 +110,11 @@ sub mk_files {
       } #end file search
 		untie @lines;
 
-    $cube = "$basename-density-$nfchk.cube";  
-    print "Working on cube #$nfchk\n\n";
-  	system(`cubegen 0 density $new_fchk $cube`); 
+    if ($cube_flag) {
+      $cube = "$basename-density-$nfchk.cube";  
+      print "Working on cube #$nfchk\n\n";
+    	system(`cubegen 0 density $new_fchk $cube`); 
+      }
 
     }
 
@@ -117,12 +124,27 @@ sub parse {
 
 	my @inp = @_;
 
-	if ($inp[0] =~ /.fchk/){ $fchk = $inp[0]; 
-    if ($inp[1] =~ /.log/) { $logfile = $inp[1]; } 
-    else { error(); }
-    }
-	elsif ($inp[0] =~ /-h/){ system('perldoc dendiff'); } 
-	else { error(); }
+  if ($inp[0] =~ /[fc]/) {
+		if ($inp[0] =~ /f/) { $fchk_flag  = 1; }
+		if ($inp[0] =~ /c/) { $cube_flag= 1;
+      if ($inp[0] !~ /f/) { error(); die; } }
+ 		if ($#inp < 2) { error(); die; }
+		else {
+			if ($inp[1] =~ /.fchk/){ $fchk= $inp[1]; }
+			else { error(); }
+			if ($inp[2] =~ /.log/){ $logfile= $inp[2]; }
+			else { error(); }
+			}
+		}
+  elsif ($inp[0] =~ /-h/) { system('perldoc dendiff'); } 
+  else { error(); }    
+
+#	if ($inp[0] =~ /.fchk/){ $fchk = $inp[0]; 
+#    if ($inp[1] =~ /.log/) { $logfile = $inp[1]; } 
+#    else { error(); }
+#    }
+#	elsif ($inp[0] =~ /-h/){ system('perldoc dendiff'); } 
+#	else { error(); }
 
 #  print "fchk = $fchk\n";
 #  print "log  = $logfile\n";
