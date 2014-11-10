@@ -19,9 +19,6 @@ differences.
 
 'dendiff -f file1.fchk file2.log' (make all the .fchk files - file2-#.fchk)
 
-'dendiff -f file1.fchk file2.log' (make all the .fchk files - file2-#.fchk)
-
-
 =head1 VERSION
 
 0.0.1
@@ -34,7 +31,7 @@ Patrick J Lestrange, E<lt>plestran@uw.eduE<gt>
 
 our $version = "0.0.1";
 our ($norb,$ntt,$logfile,$fchk,$alpha_e,$beta_e);
-our (%alpha_den,%beta_den,%total_den,@time,$nden);
+our (@alpha_den,@beta_den,@total_den,@time,$nden);
 our $cube_flag = 0;
 our $fchk_flag = 0;
 
@@ -48,7 +45,8 @@ else {
 	parse(@ARGV); 
 	if ($fchk_flag) {
     search_logfile();
-    mk_files(); }
+    mk_files();
+     }
 	}
 
 #################
@@ -65,22 +63,43 @@ sub error {
 sub mk_files {
 
   my (@string,@lines,@formatted);
-  my ($nfchk,$new_fchk,$basename,$cube);
+  my ($nfchk,$new_fchk,$basename,$cube,$tmp_file);
   my ($div5,$mod5,$iend,$ind);
   @string = split /\./, $logfile;
 	$basename = $string[0];
 
-  for (my $i = 0; $i < $nden; $i++) {
+#  for (my $i = 0; $i <= $nden; $i++) {
+  for (my $i = 0; $i < 2; $i++) {
+    
+    @alpha_den = ();
+    @beta_den  = ();
+    $tmp_file  = "tmp-$i.txt";
+    open (IN, '<', $tmp_file) or die "Can't read input tmp-file: $!\n"; 
+    while (<IN>) {
+      if (/density difference/ and /A/) {
+  			@string = split /\s*\s\s*/; 
+   			for (my $i = 5; $i <= $#string; $i++){ push (@alpha_den,$string[$i]); } }
+      if (/density difference/ and /B/) {
+  			@string = split /\s*\s\s*/; 
+  			for (my $i = 5; $i <= $#string; $i++){ push (@beta_den,$string[$i]); } }
+      }
+  	close IN;
+    for (my $j = 0; $j < $ntt; $j++) {
+      $total_den[$j] = $alpha_den[$j] + $beta_den[$j]; }
+
+    open (OUT, '>', 'full-den.txt');
+    print OUT @total_den;
+    close OUT;
+
 
     $mod5 = $ntt % 5;
     $div5 = floor($ntt/5);
-    $nfchk = $i+1;
-
+    $nfchk = $i;
 		print "Working on fchk #$nfchk\n";
     $new_fchk = "$basename-$nfchk.fchk";  
     system (`cp $fchk $new_fchk`);   
-		tie @lines, 'Tie::File', $new_fchk, recsep => "\n";
-    for (my $j = 0; $j <= $#lines; $j++){
+		tie @lines, 'Tie::File', $new_fchk, recsep => "\n", memory => 2_000_000_000;
+    for (my $j = 0; $j < $#lines; $j++){
       if ($lines[$j] =~ /Total SCF Density/ )  {
         $iend = $div5 + $j;
         for (my $k = $j+1; $k <= $iend; $k++) {
@@ -88,10 +107,10 @@ sub mk_files {
           $ind = 5*($k - ($j+1));
           #format the print statement
           for (my $l = 0; $l < 5; $l++){
-            if ($total_den{$i}[$ind+$l] < 0) {
-              $formatted[$l] = sprintf(" %.8E", $total_den{$i}[$ind+$l]); }
+            if ($total_den[$ind+$l] < 0) {
+              $formatted[$l] = sprintf(" %.8E", $total_den[$ind+$l]); }
             else {
-              $formatted[$l] = sprintf("  %.8E", $total_den{$i}[$ind+$l]); } 
+              $formatted[$l] = sprintf("  %.8E", $total_den[$ind+$l]); } 
             $lines[$k] .= $formatted[$l]; }
           $lines[$k] .= "\n";
           }
@@ -99,10 +118,10 @@ sub mk_files {
           $lines[$iend+1] = ();
           $ind = $ntt-$mod5;
           for (my $l = 0; $l < $mod5; $l++){
-            if ($total_den{$i}[$ind+$l] < 0) {
-              $formatted[$l] = sprintf(" %.8E", $total_den{$i}[$ind+$l]); }
+            if ($total_den[$ind+$l] < 0) {
+              $formatted[$l] = sprintf(" %.8E", $total_den[$ind+$l]); }
             else {
-              $formatted[$l] = sprintf("  %.8E", $total_den{$i}[$ind+$l]); } 
+              $formatted[$l] = sprintf("  %.8E", $total_den[$ind+$l]); } 
             $lines[$iend+1] .= $formatted[$l]; }
           $lines[$iend+1] .= "\n";
           } #end mod5
@@ -115,6 +134,10 @@ sub mk_files {
       print "Working on cube #$nfchk\n\n";
     	system(`cubegen 0 density $new_fchk $cube`); 
       }
+#    system(`rm $tmp_file`); 
+#    system(`rm $new_fchk`); 
+    
+
 
     }
 
@@ -143,76 +166,64 @@ sub parse {
 
 sub search_logfile {
 
-  my @string;
+  my (@string,$tmp_file,$lines);
 
+# find number of basis functions
 	open(IN, '<', $logfile) or die "Can't read input file: $!\n"; 
 	while (<IN>) { 
-
     if (/primitive/) {
 			@string = split /\s+/;
 #			for (my $i = 0; $i <= $#string; $i++){ print "$string[$i]\n"; }
       $norb = $string[1];
       $ntt = ($norb*($norb+1))/2; }
-
     }
 	close IN;
 
   my $nalpha = -1;
   my $nbeta  = -1;
 	$/ = ""; # paragraph mode
-	open(IN, '<', $logfile) or die "Can't read input file: $!\n"; 
+	open(IN, '<', $logfile) or die "Can't read input logfile: $!\n"; 
 	while (<IN>) { 
+    $lines += 1;
 
     # get the alpha density differences
     if (/density difference/ and /A/) {
+      @alpha_den = ();
       $nalpha += 1;
 			@string = split /\s*\s\s*/; 
-			for (my $i = 5; $i <= $#string; $i++){ push (@{$alpha_den{$nalpha}}, $string[$i]); }
+      $tmp_file = "tmp-$nalpha.txt";
+      print "Writing tmp file: $tmp_file\n";
+      open (OUT, '>>', $tmp_file) or die "Can't open file: $!\n"; 
+      print OUT;
+      close OUT;
+#			for (my $i = 5; $i <= $#string; $i++){ push (@alpha_den,$string[$i]); }
       }
 
     # get the beta density differences
     if (/density difference/ and /B/) {
+      @beta_den= ();
       $nbeta+= 1;
 			@string = split /\s*\s\s*/; 
-			for (my $i = 5; $i <= $#string; $i++){ push (@{$beta_den{$nalpha}}, $string[$i]); }
+      $tmp_file = "tmp-$nbeta.txt";
+      open (OUT, '>>', $tmp_file) or die "Can't open file: $!\n"; 
+      print OUT;
+      close OUT;
+#			for (my $i = 5; $i <= $#string; $i++){ push (@beta_den,$string[$i]); }
       }
 
     }
 	close IN;
 
-  my $dendim = $#{$alpha_den{0}}+1;
   if ($nalpha != $nbeta) {
     print "Found a different number of alpha and beta densities.\n";
     print "Unable to proceed.\n";
     die; }
-  elsif ($ntt != $dendim) {
-    print "Upper triangular density doesn't equal NTT\n";
-    print "Density dimension = $dendim\n";
-    print "NTT               = $ntt\n"; }
   $nden = $nalpha;
 
-#  print "Alpha Densities\n";
+# Make the total density difference
 #  for (my $i = 0; $i < $ntt; $i++){ 
 #    for (my $j = 0; $j < $nalpha; $j++){ 
-#      print "$alpha_den{$j}[$i]\t"; }
-#    print "\n"; }
-#  print "Beta Densities\n";
-#  for (my $i = 0; $i < $ntt; $i++){ 
-#    for (my $j = 0; $j < $nbeta; $j++){ 
-#      print "$beta_den{$j}[$i]\t"; }
-#    print "\n"; }
-
-# Makde the total density difference
-  for (my $i = 0; $i < $ntt; $i++){ 
-    for (my $j = 0; $j < $nalpha; $j++){ 
-      $total_den{$j}[$i] = $alpha_den{$j}[$i] + $beta_den{$j}[$i]; } }
-
-#  print "Total Density\n";
-#  for (my $i = 0; $i < $ntt; $i++){ 
-#    for (my $j = 0; $j < $nalpha; $j++){ 
-#      print "$total_den{$j}[$i]\t"; }
-#    print "\n"; }
-
+#      $total_den{$j}[$i] = $alpha_den{$j}[$i] + $beta_den{$j}[$i]; } }
 
 }
 
