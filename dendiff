@@ -66,9 +66,10 @@ sub mk_files {
 	$basename = $string[0];
   my $nstep = floor($nden/$step);
 
-  for (my $i = 0; $i <= $nstep; $i++) {
+  for (my $i = 0; $i <= $nstep+1; $i++) {
     $nfchk = $i*$step;
-   
+    if ($i == $nstep+1) { $nfchk = $nden; }  
+ 
 #   read alpha/beta densities 
 	  $/ = ""; 
     @alpha_den = ();
@@ -143,7 +144,7 @@ sub mk_files {
     print "Working on cube #$nfchk: $cube\n\n";
     system(`cubegen 0 density $new_fchk $cube`);
   	system(`rm $tmp_file`);
-  	system(`rm $new_fchk`);
+#  	system(`rm $new_fchk`);
 
     }
 
