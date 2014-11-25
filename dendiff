@@ -22,7 +22,7 @@ differences.
 
 =head1 VERSION
 
-0.0.2
+0.0.3
 
 =head1 AUTHOR
 
@@ -83,7 +83,6 @@ sub mk_files {
       if (/Electron density/ and /A/) {
   			@string = split /\s*\s\s*/; 
    			for (my $i = 4; $i <= $#string; $i++){ push (@alpha_den,$string[$i]); } }
-      print "\n";
       if (/Electron density/ and /B/) {
   			@string = split /\s*\s\s*/; 
   			for (my $i = 4; $i <= $#string; $i++){ push (@beta_den,$string[$i]); } } }
@@ -113,8 +112,8 @@ sub mk_files {
           $formatted[$i] = sprintf("  %.8E", $total_den[$index]); } 
         $den_string[$div5] .= $formatted[$i]; }
       $den_string[$div5] .= "\n"; }
-    print "Total Density Difference\n";
-    print @den_string;
+#    print "Total Density Difference\n";
+#    print @den_string;
 
 #   form the new fchk file
     $new_fchk = "$basename-$nfchk.fchk";  
@@ -124,14 +123,11 @@ sub mk_files {
     open (IN,  '<', $fchk) or die "Can't read input fchk-file: $!\n"; 
     open (OUT, '>', $new_fchk) or die "Can't read output fchk-file: $!\n"; 
     while (<IN>) {
-      print;
       if ($. < $istart or $. > $iend) { 
         print OUT; }
       else {
-        print $den_string[$index];
         print OUT $den_string[$index];
-        $index += 1;
-        print "index = $index\n"; } }
+        $index += 1; } }
     close IN;
     close OUT;
 
@@ -152,7 +148,7 @@ sub parse {
 
   if ($inp[0] =~/[0-9]/){
     $step = $inp[0];
-    print "Making cube files for every $step steps.\n"; }
+    print "\nMaking cube files for every $step steps.\n\n"; }
     if ($inp[1] =~ /.fchk/) {
  	  	if ($#inp < 2) { error(); die; }
 	  	else {
@@ -176,8 +172,8 @@ sub search_fchk {
   close IN;
   $iend = $istart + $div5 - 1;
   if ($mod5 != 0) { $iend += 1; }
-  print "start = $istart\n";
-  print "end   = $iend\n";
+#  print "start = $istart\n";
+#  print "end   = $iend\n";
 
 	open(IN, '<', $fchk) or die "Can't read input fchk-file: $!\n"; 
 	while (<IN>) { 
