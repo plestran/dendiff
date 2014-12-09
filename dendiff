@@ -73,9 +73,9 @@ sub mk_files {
 	$basename = $string[0];
   my $nstep = floor($nden/$step);
 
-  for (my $i = 0; $i <= $nstep+1; $i++) {
+  for (my $i = 0; $i <= $nstep; $i++) {
     $nfchk = $i*$step;
-    if ($i == $nstep+1) { $nfchk = $nden; }  
+#    if ($i == $nstep+1) { $nfchk = $nden-1; }  
  
 #   read alpha/beta densities 
 	  $/ = ""; 
@@ -93,28 +93,36 @@ sub mk_files {
   	close IN;
 #    print "Alpha = @alpha_den\n";
 #    print "Beta  = @beta_den\n";
+    if ($nfchk == 0) { #form the initial density
+      for (my $j = 0; $j < $ntt; $j++){ 
+        $init_den[$j] = $alpha_den[$j]+$beta_den[$j];}}
+#    print "Initial = @init_den\n";
 
 #   form the total density string
     @den_string= map { "" } 1..($div5+1);
-    for (my $i = 0; $i < $ntt; $i++){
-      $den_diff[$i] = $fchk_den[$i] - ($alpha_den[$i] + $beta_den[$i]); }
-    for (my $i = 0; $i < $div5; $i++){
-      for (my $j = 0; $j < 5; $j++){
-        $index = 5*$i+$j;
+    for (my $j = 0; $j < $ntt; $j++){
+      if ($fchk_diff) {
+        $den_diff[$j] = $fchk_den[$j] - ($alpha_den[$j] + $beta_den[$j]);}
+      elsif ($log_diff) {
+        $den_diff[$j] = $init_den[$j] - ($alpha_den[$j] + $beta_den[$j]);}
+      }
+    for (my $j = 0; $j < $div5; $j++){
+      for (my $k = 0; $k < 5; $k++){
+        $index = 5*$j+$k;
+        if ($den_diff[$index] < 0) {
+          $formatted[$k] = sprintf(" %.8E", $den_diff[$index]); }
+        else {
+          $formatted[$k] = sprintf("  %.8E", $den_diff[$index]); } 
+        $den_string[$j] .= $formatted[$k]; }
+      $den_string[$j] .= "\n"; }
+    if ($mod5 != 0) {
+      for (my $j = 0; $j < $mod5; $j++){
+        $index = 5*$div5+$j;
         if ($den_diff[$index] < 0) {
           $formatted[$j] = sprintf(" %.8E", $den_diff[$index]); }
         else {
           $formatted[$j] = sprintf("  %.8E", $den_diff[$index]); } 
-        $den_string[$i] .= $formatted[$j]; }
-      $den_string[$i] .= "\n"; }
-    if ($mod5 != 0) {
-      for (my $i = 0; $i < $mod5; $i++){
-        $index = 5*$div5+$i;
-        if ($den_diff[$index] < 0) {
-          $formatted[$i] = sprintf(" %.8E", $den_diff[$index]); }
-        else {
-          $formatted[$i] = sprintf("  %.8E", $den_diff[$index]); } 
-        $den_string[$div5] .= $formatted[$i]; }
+        $den_string[$div5] .= $formatted[$j]; }
       $den_string[$div5] .= "\n"; }
 #    print "Total Density Difference\n";
 #    print @den_string;
