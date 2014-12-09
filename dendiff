@@ -16,13 +16,15 @@ differences.
 
 =head1 EXAMPLES
 
-'dendiff 1 file1.fchk file2.log' (make all the .fchk/cube files)
+'dendiff N n file1.fchk file2.log' (make cube files every Nth step)
+                                   (subtract from .fchk density)
 
-'dendiff 5 file1.fchk file2.log' (make every 5th step)
+'dendiff N l file1.fchk file2.log' (make cube files every Nth step)
+                                   (subtract from initial .log density)
 
 =head1 VERSION
 
-0.0.3
+0.0.4
 
 =head1 AUTHOR
 
@@ -30,10 +32,11 @@ Patrick J Lestrange, E<lt>plestran@uw.eduE<gt>
 
 =cut
 
-our $version = "0.0.3";
+our $version = "0.0.4";
 our ($norb,$ntt,$logfile,$fchk,$alpha_e,$beta_e);
-our (@alpha_den,@beta_den,@total_den,@fchk_den);
+our (@alpha_den,@beta_den,@den_diff,@fchk_den,@init_den);
 our ($nden,$step,$istart,$iend,$div5,$mod5);
+our ($fchk_diff,$log_diff);
 
 ##################
 ## Main Program ##
@@ -57,6 +60,7 @@ sub error {
 
 		print "Unable to interpret input.\n";
 		print "Try running 'dendiff -h' to see the help screen\n";
+    die;
 
 }
 
@@ -93,23 +97,23 @@ sub mk_files {
 #   form the total density string
     @den_string= map { "" } 1..($div5+1);
     for (my $i = 0; $i < $ntt; $i++){
-      $total_den[$i] = $fchk_den[$i] - ($alpha_den[$i] + $beta_den[$i]); }
+      $den_diff[$i] = $fchk_den[$i] - ($alpha_den[$i] + $beta_den[$i]); }
     for (my $i = 0; $i < $div5; $i++){
       for (my $j = 0; $j < 5; $j++){
         $index = 5*$i+$j;
-        if ($total_den[$index] < 0) {
-          $formatted[$j] = sprintf(" %.8E", $total_den[$index]); }
+        if ($den_diff[$index] < 0) {
+          $formatted[$j] = sprintf(" %.8E", $den_diff[$index]); }
         else {
-          $formatted[$j] = sprintf("  %.8E", $total_den[$index]); } 
+          $formatted[$j] = sprintf("  %.8E", $den_diff[$index]); } 
         $den_string[$i] .= $formatted[$j]; }
       $den_string[$i] .= "\n"; }
     if ($mod5 != 0) {
       for (my $i = 0; $i < $mod5; $i++){
         $index = 5*$div5+$i;
-        if ($total_den[$index] < 0) {
-          $formatted[$i] = sprintf(" %.8E", $total_den[$index]); }
+        if ($den_diff[$index] < 0) {
+          $formatted[$i] = sprintf(" %.8E", $den_diff[$index]); }
         else {
-          $formatted[$i] = sprintf("  %.8E", $total_den[$index]); } 
+          $formatted[$i] = sprintf("  %.8E", $den_diff[$index]); } 
         $den_string[$div5] .= $formatted[$i]; }
       $den_string[$div5] .= "\n"; }
 #    print "Total Density Difference\n";
@@ -134,9 +138,9 @@ sub mk_files {
 #   form the cube file
     $cube = "$basename-density-$nfchk.cube";
     print "Working on cube #$nfchk: $cube\n\n";
-    system(`cubegen 0 density $new_fchk $cube`);
+    system(`cubegen 0 fdensity=scf $new_fchk $cube`);
   	system(`rm $tmp_file`);
-#  	system(`rm $new_fchk`);
+  	system(`rm $new_fchk`);
 
     }
 
@@ -145,19 +149,29 @@ sub mk_files {
 sub parse {
 
 	my @inp = @_;
+  $fchk_diff = 0;
+  $log_diff  = 0;
 
   if ($inp[0] =~/[0-9]/){
     $step = $inp[0];
-    print "\nMaking cube files for every $step steps.\n\n"; }
-    if ($inp[1] =~ /.fchk/) {
- 	  	if ($#inp < 2) { error(); die; }
+    print "\nMaking cube files for every $step steps.\n\n"; 
+    if ($inp[1] =~ /n/) {$fchk_diff = 1;}
+    elsif ($inp[1] =~ /l/) {$log_diff = 1;}
+    else { error(); }
+
+    if ($inp[2] =~ /.fchk/) {
+ 	  	if ($#inp < 3) { error(); die; }
 	  	else {
-	  		if ($inp[1] =~ /.fchk/){ $fchk= $inp[1]; }
+	  		if ($inp[2] =~ /.fchk/){ $fchk= $inp[2]; }
 	  		else { error(); }
-	  		if ($inp[2] =~ /.log/){ $logfile= $inp[2]; }
+	  		if ($inp[3] =~ /.log/){ $logfile= $inp[3]; }
 	  		else { error(); } } }
-  elsif ($inp[0] =~ /[h]/) { system('perldoc dendiff'); } 
+    }
+  elsif ($inp[0] =~ /[h]/) { system('perldoc dendiff'); die; } 
   else { error(); }    
+
+#  print "fchk flag = $fchk_diff\n";
+#  print "log  flag = $log_diff\n";
 
 }
 
@@ -238,11 +252,6 @@ sub search_logfile {
     print "Unable to proceed.\n";
     die; }
   $nden = $nalpha;
-
-# Make the total density difference
-#  for (my $i = 0; $i < $ntt; $i++){ 
-#    for (my $j = 0; $j < $nalpha; $j++){ 
-#      $total_den{$j}[$i] = $alpha_den{$j}[$i] + $beta_den{$j}[$i]; } }
 
 }
 
