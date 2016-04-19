@@ -102,9 +102,9 @@ sub mk_files {
     @den_string= map { "" } 1..($div5+1);
     for (my $j = 0; $j < $ntt; $j++){
       if ($fchk_diff) {
-        $den_diff[$j] = $fchk_den[$j] - ($alpha_den[$j] + $beta_den[$j]);}
+        $den_diff[$j] = ($alpha_den[$j] + $beta_den[$j]) - $fchk_den[$j];} 
       elsif ($log_diff) {
-        $den_diff[$j] = $init_den[$j] - ($alpha_den[$j] + $beta_den[$j]);}
+        $den_diff[$j] = ($alpha_den[$j] + $beta_den[$j]) - $init_den[$j];} 
       }
     for (my $j = 0; $j < $div5; $j++){
       for (my $k = 0; $k < 5; $k++){
@@ -148,7 +148,7 @@ sub mk_files {
     print "Working on cube #$nfchk: $cube\n\n";
     system(`cubegen 0 fdensity=scf $new_fchk $cube`);
   	system(`rm $tmp_file`);
-  	system(`rm $new_fchk`);
+#  	system(`rm $new_fchk`);
 
     }
 
